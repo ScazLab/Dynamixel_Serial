@@ -61,14 +61,14 @@ void DynamixelClass::end(){
 }
 
 
-void DynamixelClass::setDirectionPin(unsigned char D_Pin){
+void DynamixelClass::setDirectionPin(byte D_Pin){
 
     Direction_Pin = D_Pin;
     pinMode(Direction_Pin,OUTPUT);
 
 }
 
-unsigned int DynamixelClass::reset(unsigned char ID){
+unsigned int DynamixelClass::reset(byte ID){
 
     Instruction_Packet_Array[0] = ID;
     Instruction_Packet_Array[1] = RESET_LENGTH;
@@ -91,7 +91,7 @@ unsigned int DynamixelClass::reset(unsigned char ID){
 
 }
 
-unsigned int DynamixelClass::ping(unsigned char ID){
+unsigned int DynamixelClass::ping(byte ID){
 
     Instruction_Packet_Array[0] = ID;
     Instruction_Packet_Array[1] = PING_LENGTH;
@@ -110,199 +110,104 @@ unsigned int DynamixelClass::ping(unsigned char ID){
 
 }
 
-unsigned int DynamixelClass::setStatusPaketReturnDelay(unsigned char ID,unsigned char ReturnDelay){
-
+unsigned int DynamixelClass::setRegister1(byte ID, byte address, byte value) {
     Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_RETURN_LENGTH;
+    Instruction_Packet_Array[1] = SET_REGISTER1_LENGTH;
     Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_RETURN_DELAY_TIME;
-    Instruction_Packet_Array[4] = byte(ReturnDelay/2);
+    Instruction_Packet_Array[3] = address;
+    Instruction_Packet_Array[4] = value;
 
     clearRXbuffer();
 
     transmitInstructionPacket();
 
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
+    if (ID == 0XFE || Status_Return_Value != ALL) {     // If ID of FE is used no status packets are returned so we do not need to check it
+        return 0;
+    } else {
         readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
+        if (Status_Packet_Array[2] == 0) {              // If there is no status packet error return value
             return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
-}
-
-unsigned int DynamixelClass::setID(unsigned char ID, unsigned char New_ID){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_ID_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_ID;
-    Instruction_Packet_Array[4] = New_ID;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
+        } else {
             return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
         }
     }
 }
 
-unsigned int DynamixelClass::setBaudRate(unsigned char ID, long Baud){
+unsigned int DynamixelClass::setStatusPacketReturnDelay(byte ID, byte ReturnDelay){
+    return setRegister1(ID, EEPROM_RETURN_DELAY_TIME, byte(ReturnDelay/2));
+}
 
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_BD_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_BAUD_RATE;
+unsigned int DynamixelClass::setID(byte ID, byte New_ID){
+    return setRegister1(ID, EEPROM_ID, New_ID);
+}
 
-    switch (Baud){
+unsigned int DynamixelClass::setBaudRate(byte ID, long Baud) {
+    byte baudChar = 0;
+    switch (Baud) {
         case 1000000:
-            Instruction_Packet_Array[4] = 0x01;
+            baudChar = 0x01;
             break;
         case 2250000:
-            Instruction_Packet_Array[4] = 0xFA;
+            baudChar = 0xFA;
             break;
         case 2500000:
-            Instruction_Packet_Array[4] = 0xFB;
+            baudChar = 0xFB;
             break;
         case 3000000:
-            Instruction_Packet_Array[4] = 0xFC;
+            baudChar = 0xFC;
             break;
         default:
-        Instruction_Packet_Array[4] = byte((2000000/Baud) - 1);
+            baudChar = byte((2000000 / Baud) - 1);
     }
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
+    
+    return setRegister1(ID, EEPROM_BAUD_RATE, baudChar);
 }
 
-unsigned int DynamixelClass::setMaxTorque( unsigned char ID, int Torque){
-
+unsigned int DynamixelClass::setRegister2(byte ID, byte address, unsigned int value) {
     Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_MAX_TORQUE_LENGTH;
+    Instruction_Packet_Array[1] = SET_REGISTER1_LENGTH;
     Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_MAX_TORQUE_L ;
-    Instruction_Packet_Array[4] = byte(Torque);
-    Instruction_Packet_Array[5] = byte(Torque >> 8);
+    Instruction_Packet_Array[3] = address;
+    Instruction_Packet_Array[4] = byte(value);
+    Instruction_Packet_Array[5] = byte(value >> 8);
 
     clearRXbuffer();
 
     transmitInstructionPacket();
 
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
+    if (ID == 0XFE || Status_Return_Value != ALL) {     // If ID of FE is used no status packets are returned so we do not need to check it
+        return 0;
+    } else {
         readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
+        if (Status_Packet_Array[2] == 0) {              // If there is no status packet error return value
             return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
+        } else {
             return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
         }
     }
 }
 
-unsigned int DynamixelClass::setHoldingTorque(unsigned char ID, bool Set){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_HOLDING_TORQUE_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = RAM_TORQUE_ENABLE;
-    Instruction_Packet_Array[4] = Set;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
+unsigned int DynamixelClass::setMaxTorque( byte ID, int Torque){
+    return setRegister2(ID, EEPROM_MAX_TORQUE_L, Torque);
 }
 
-unsigned int DynamixelClass::setAlarmShutdown(unsigned char  ID,unsigned char Set){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_ALARM_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_ALARM_SHUTDOWN;
-    Instruction_Packet_Array[4] = Set;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
+unsigned int DynamixelClass::setTorqueLimit( byte ID, int Torque){
+    return setRegister2(ID, RAM_TORQUE_LIMIT_L, Torque);
 }
 
-unsigned int DynamixelClass::setStatusPaket(unsigned char  ID,unsigned char Set){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_RETURN_LEVEL_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_RETURN_LEVEL;
-    Instruction_Packet_Array[4] = Set;
-
-    Status_Return_Value = Set;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
+unsigned int DynamixelClass::setHoldingTorque(byte ID, bool Set){
+    return setRegister1(ID, RAM_TORQUE_ENABLE, Set);
 }
 
+unsigned int DynamixelClass::setAlarmShutdown(byte ID, byte Set){
+    return setRegister1(ID, EEPROM_ALARM_SHUTDOWN, Set);
+}
 
-unsigned int DynamixelClass::setMode(unsigned char ID, bool Dynamixel_Mode, unsigned int Dynamixel_CW_Limit,unsigned int Dynamixel_CCW_Limit){
+unsigned int DynamixelClass::setStatusPacket(byte  ID,byte Set){
+    return setRegister1(ID, EEPROM_RETURN_LEVEL, Set);
+}
 
+unsigned int DynamixelClass::setMode(byte ID, bool Dynamixel_Mode, unsigned int Dynamixel_CW_Limit,unsigned int Dynamixel_CCW_Limit){
     Instruction_Packet_Array[0] = ID;
     Instruction_Packet_Array[1] = SET_MODE_LENGTH;
     Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
@@ -324,43 +229,18 @@ unsigned int DynamixelClass::setMode(unsigned char ID, bool Dynamixel_Mode, unsi
     transmitInstructionPacket();
 
     if (Status_Return_Value == ALL){
-    readStatusPacket();
-        if (Status_Packet_Array[2] != 0){
-        return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-
-    }
-
- }
-
- unsigned int DynamixelClass::setPunch(unsigned char ID,unsigned int Punch){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_PUNCH_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = RAM_PUNCH_L;
-    Instruction_Packet_Array[4] = byte(Punch);
-    Instruction_Packet_Array[5] = byte(Punch >> 8);
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
         readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
+        if (Status_Packet_Array[2] != 0){
             return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
         }
     }
-
  }
 
- unsigned int DynamixelClass::setPID(unsigned char ID ,unsigned char P,unsigned char I,unsigned char D){
+ unsigned int DynamixelClass::setPunch(byte ID,unsigned int Punch){
+    return setRegister2(ID, RAM_PUNCH_L, Punch);
+ }
 
+ unsigned int DynamixelClass::setPID(byte ID, byte P, byte I, byte D){
     Instruction_Packet_Array[0] = ID;
     Instruction_Packet_Array[1] = SET_PID_LENGTH;
     Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
@@ -383,62 +263,17 @@ unsigned int DynamixelClass::setMode(unsigned char ID, bool Dynamixel_Mode, unsi
             return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
         }
     }
-
  }
 
-unsigned int DynamixelClass::setTemp(unsigned char ID,unsigned char temp){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_TEMP_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_LIMIT_TEMPERATURE;
-    Instruction_Packet_Array[4] = temp;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
+unsigned int DynamixelClass::setTemp(byte ID, byte temp){
+    return setRegister1(ID, EEPROM_LIMIT_TEMPERATURE, temp);
 }
 
-unsigned int DynamixelClass::setVoltage(unsigned char ID,unsigned char Volt_L, unsigned char Volt_H){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SET_VOLT_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = EEPROM_LOW_LIMIT_VOLTAGE;
-    Instruction_Packet_Array[4] = Volt_L;
-    Instruction_Packet_Array[5] = Volt_H;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
+unsigned int DynamixelClass::setVoltage(byte ID, byte Volt_L, byte Volt_H){
+    return setRegister2(ID, EEPROM_LOW_LIMIT_VOLTAGE, Volt_H << 8 | Volt_L);
 }
 
-unsigned int DynamixelClass::servo(unsigned char ID,unsigned int Position,unsigned int Speed){
-
+unsigned int DynamixelClass::servo(byte ID,unsigned int Position,unsigned int Speed){
     Instruction_Packet_Array[0] = ID;
     Instruction_Packet_Array[1] = SERVO_GOAL_LENGTH;
     Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
@@ -452,7 +287,6 @@ unsigned int DynamixelClass::servo(unsigned char ID,unsigned int Position,unsign
 
     transmitInstructionPacket();
 
-
     if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
         return (0x00);
     }else{
@@ -463,39 +297,9 @@ unsigned int DynamixelClass::servo(unsigned char ID,unsigned int Position,unsign
             return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
         }
     }
-
 }
 
-unsigned int DynamixelClass::servoPreload(unsigned char ID,unsigned int Position,unsigned int Speed){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = SERVO_GOAL_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_REG_WRITE_DATA;
-    Instruction_Packet_Array[3] = RAM_GOAL_POSITION_L;
-    Instruction_Packet_Array[4] = byte(Position);
-    Instruction_Packet_Array[5] = byte(Position >> 8);
-    Instruction_Packet_Array[6] = byte(Speed);
-    Instruction_Packet_Array[7] = byte(Speed >> 8);
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
-}
-
-unsigned int DynamixelClass::wheel(unsigned char ID, bool Rotation,unsigned int Speed){
-
+unsigned int DynamixelClass::wheel(byte ID, bool Rotation,unsigned int Speed){
     byte Speed_H,Speed_L;
     Speed_L = Speed;
     if (Rotation == 0){                         // Move Left
@@ -504,120 +308,11 @@ unsigned int DynamixelClass::wheel(unsigned char ID, bool Rotation,unsigned int 
     }else if (Rotation == 1){                    // Move Right
         Speed_H = (Speed >> 8)+4;
     }
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = WHEEL_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = RAM_GOAL_SPEED_L;
-    Instruction_Packet_Array[4] = Speed_L;
-    Instruction_Packet_Array[5] = Speed_H;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
+    
+    return setRegister2(ID, RAM_GOAL_SPEED_L, Speed_H << 8 | Speed_L);
 }
 
-void DynamixelClass::wheelSync(unsigned char ID1, bool Dir1, unsigned int Speed1, unsigned char ID2, bool Dir2, unsigned int Speed2, unsigned char ID3, bool Dir3, unsigned int Speed3){
-
-    byte Speed1_H,Speed1_L;
-    Speed1_L = Speed1;
-        if (Dir1 == 0){                          // Move Left
-            Speed1_H = Speed1 >> 8;
-        }
-        else if (Dir1 == 1)                     // Move Right
-        {
-            Speed1_H = (Speed1 >> 8)+4;
-        }
-
-    byte Speed2_H,Speed2_L;
-    Speed2_L = Speed2;
-        if (Dir2 == 0){                          // Move Left
-            Speed2_H = Speed2 >> 8;
-        }
-        else if (Dir2 == 1)                     // Move Right
-        {
-            Speed2_H = (Speed2 >> 8)+4;
-        }
-
-    byte Speed3_H,Speed3_L;
-    Speed3_L = Speed3;
-        if (Dir3 == 0){                          // Move Left
-            Speed3_H = Speed3 >> 8;
-        }
-        else if (Dir3 == 1)                     // Move Right
-        {
-            Speed3_H = (Speed3 >> 8)+4;
-        }
-
-    Instruction_Packet_Array[0] = 0xFE;         // When Writing a Sync comman you must address all(0xFE) servos
-    Instruction_Packet_Array[1] = SYNC_LOAD_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_SYNC_WRITE;
-    Instruction_Packet_Array[3] = RAM_GOAL_SPEED_L;
-    Instruction_Packet_Array[4] = SYNC_DATA_LENGTH;
-    Instruction_Packet_Array[5] = ID1;
-    Instruction_Packet_Array[6] = Speed1_L;
-    Instruction_Packet_Array[7] = Speed1_H;
-    Instruction_Packet_Array[8] = ID2;
-    Instruction_Packet_Array[9] = Speed2_L;
-    Instruction_Packet_Array[10] = Speed2_H;
-    Instruction_Packet_Array[11] = ID3;
-    Instruction_Packet_Array[12] = Speed3_L;
-    Instruction_Packet_Array[13] = Speed3_H;
-
-    transmitInstructionPacket();
-
-}
-
-unsigned int DynamixelClass::wheelPreload(unsigned char ID, bool Dir,unsigned int Speed){
-
-    byte Speed_H,Speed_L;
-    Speed_L = Speed;
-        if (Dir == 0){                          // Move Left
-            Speed_H = Speed >> 8;
-        }
-        else if (Dir == 1)                      // Move Right
-        {
-            Speed_H = (Speed >> 8)+4;
-        }
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = WHEEL_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_REG_WRITE_DATA;
-    Instruction_Packet_Array[3] = RAM_GOAL_SPEED_L;
-    Instruction_Packet_Array[4] = Speed_L;
-    Instruction_Packet_Array[5] = Speed_H;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
-
-}
-
-unsigned int DynamixelClass::action(unsigned char ID){
-
+unsigned int DynamixelClass::action(byte ID){
     Instruction_Packet_Array[0] = ID;
     Instruction_Packet_Array[1] = RESET_LENGTH;
     Instruction_Packet_Array[2] = COMMAND_ACTION;
@@ -638,191 +333,83 @@ unsigned int DynamixelClass::action(unsigned char ID){
     }
 }
 
-unsigned int DynamixelClass::ledState(unsigned char ID, bool Status){
-
-    delay(1);                                           // Sending packets too fast has been problematic
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = LED_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_WRITE_DATA;
-    Instruction_Packet_Array[3] = RAM_LED;
-    Instruction_Packet_Array[4] = Status;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-
-    if (ID == 0XFE || Status_Return_Value != ALL ){     // If ID of FE is used no status packets are returned so we do not need to check it
-        return (0x00);
-    }else{
-        readStatusPacket();
-        if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-            return (Status_Packet_Array[0]);            // Return SERVO ID
-        }else{
-            return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-        }
-    }
+unsigned int DynamixelClass::ledState(byte ID, bool Status){
+    return setRegister1(ID, RAM_LED, Status);
 }
 
-unsigned int DynamixelClass::readTemperature(unsigned char ID){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = READ_TEMP_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_PRESENT_TEMPERATURE;
-    Instruction_Packet_Array[4] = READ_ONE_BYTE_LENGTH;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-    readStatusPacket();
-
-    if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-        return Status_Packet_Array[3];
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-    }
-}
-
-unsigned int DynamixelClass::readPosition(unsigned char ID){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = READ_POS_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_PRESENT_POSITION_L;
-    Instruction_Packet_Array[4] = READ_TWO_BYTE_LENGTH;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-    readStatusPacket();
-
-    if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value                                          // If there is no status packet error return value
-        return Status_Packet_Array[4] << 8 | Status_Packet_Array[3];    // Return present position value
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);                           // If there is a error Returns error value
-    }
-}
-
-unsigned int DynamixelClass::readLoad(unsigned char ID){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = READ_LOAD_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_PRESENT_LOAD_L;
-    Instruction_Packet_Array[4] = READ_TWO_BYTE_LENGTH;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-    readStatusPacket();
-
-    if (Status_Packet_Array[2] == 0){                                           // If there is no status packet error return value
-        return ((Status_Packet_Array[4] << 8) | Status_Packet_Array[3]);    // Return present load value
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);                                   // If there is a error Returns error value
-    }
-}
-
-unsigned int DynamixelClass::readSpeed(unsigned char ID){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = READ_SPEED_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_PRESENT_SPEED_L;
-    Instruction_Packet_Array[4] = READ_TWO_BYTE_LENGTH;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-    readStatusPacket();
-
-    if (Status_Packet_Array[2] == 0){                                           // If there is no status packet error return value
-        return (Status_Packet_Array[4] << 8) | Status_Packet_Array[3];  // Return present position value
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);                           // If there is a error Returns error value
-    }
-}
-
-
-unsigned int DynamixelClass::readVoltage(unsigned char ID){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = READ_VOLT_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_PRESENT_VOLTAGE;
-    Instruction_Packet_Array[4] = READ_ONE_BYTE_LENGTH;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-    readStatusPacket();
-
-    if (Status_Packet_Array[2] == 0){                   // If there is no status packet error return value
-        return Status_Packet_Array[3];                  // Return voltage value (value retured by Dynamixel is 10 times actual voltage)
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-    }
-}
-
-unsigned int DynamixelClass::checkRegister(unsigned char ID){
-
+unsigned int DynamixelClass::readRegister(byte ID, byte address, byte length) {
     Instruction_Packet_Array[0] = ID;
     Instruction_Packet_Array[1] = READ_REGISTER_LENGTH;
     Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_REGISTER;
-    Instruction_Packet_Array[4] = READ_ONE_BYTE_LENGTH;
+    Instruction_Packet_Array[3] = address;
+    Instruction_Packet_Array[4] = length;
 
     clearRXbuffer();
 
     transmitInstructionPacket();
     readStatusPacket();
 
-    if (Status_Packet_Array[2] == 0){                   // If there is no status packet error return value
-        return (Status_Packet_Array[3]);            // Return register value
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
+    if (Status_Packet_Array[2] == 0 {               // If there is no status packet error return value
+        if (length == 1) {
+            return Status_Packet_Array[3];
+        } else {
+            return Status_Packet_Array[4] << 8 | Status_Packet_Array[3];
+        }
+    } else {
+        return (Status_Packet_Array[2] | 0xF000); // error
     }
 }
 
-unsigned int DynamixelClass::checkMovement(unsigned char ID){
-
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = READ_MOVING_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_MOVING;
-    Instruction_Packet_Array[4] = READ_ONE_BYTE_LENGTH;
-
-    clearRXbuffer();
-
-    transmitInstructionPacket();
-    readStatusPacket();
-
-    if (Status_Packet_Array[2] == 0){                   // If there is no status packet error return value
-        return (Status_Packet_Array[3]);            // Return movement value
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);            // If there is a error Returns error value
-    }
+unsigned int DynamixelClass::readTemperature(byte ID) {
+    return readRegister(ID, RAM_PRESENT_TEMPERATURE, 1);
 }
 
-unsigned int DynamixelClass::checkLock(unsigned char ID){
+unsigned int DynamixelClass::readPosition(byte ID) {
+    return readRegister(ID, RAM_PRESENT_POSITION_L, 2);
+}
 
-    Instruction_Packet_Array[0] = ID;
-    Instruction_Packet_Array[1] = READ_LOCK_LENGTH;
-    Instruction_Packet_Array[2] = COMMAND_READ_DATA;
-    Instruction_Packet_Array[3] = RAM_LOCK;
-    Instruction_Packet_Array[4] = READ_ONE_BYTE_LENGTH;
+unsigned int DynamixelClass::readLoad(byte ID) {
+    return readRegister(ID, RAM_PRESENT_LOAD_L, 2);
+}
 
-    clearRXbuffer();
+unsigned int DynamixelClass::readSpeed(byte ID) {
+    return readRegister(ID, RAM_PRESENT_SPEED_L, 2);
+}
 
-    transmitInstructionPacket();
-    readStatusPacket();
+unsigned int DynamixelClass::readVoltage(byte ID) {
+    return readRegister(ID, RAM_PRESENT_VOLTAGE, 1);
+}
 
-    if (Status_Packet_Array[2] == 0){               // If there is no status packet error return value
-        return (Status_Packet_Array[3]);            // Return Lock value
-    }else{
-        return (Status_Packet_Array[2] | 0xF000);   // If there is a error Returns error value
-    }
+unsigned int DynamixelClass::readGoalPosition(byte ID) {
+    return readRegister(ID, RAM_GOAL_POSITION_L, 2);
+}
+
+unsigned int DynamixelClass::readGoalSpeed(byte ID) {
+    return readRegister(ID, RAM_GOAL_SPEED_L, 2);
+}
+
+unsigned int DynamixelClass::readMaxTorque(byte ID) {
+    return readRegister(ID, EEPROM_MAX_TORQUE_L, 2);
+}
+
+unsigned int DynamixelClass::readTorqueLimit(byte ID) {
+    return readRegister(ID, RAM_TORQUE_LIMIT_L, 2);
+}
+
+unsigned int DynamixelClass::readHoldingTorque(byte ID) {
+    return readRegister(ID, RAM_TORQUE_ENABLE, 1);
+}
+
+unsigned int DynamixelClass::checkRegistered(byte ID) {
+    return readRegister(ID, RAM_REGISTERED, 1);
+}
+
+unsigned int DynamixelClass::checkMovement(byte ID){
+    return readRegister(ID, RAM_MOVING, 1);
+}
+
+unsigned int DynamixelClass::checkLock(byte ID){
+    return readRegister(ID, RAM_LOCK, 1);
 }
 
 
@@ -831,7 +418,6 @@ unsigned int DynamixelClass::checkLock(unsigned char ID){
 //##############################################################################
 
 void DynamixelClass::transmitInstructionPacket(void){                                   // Transmit instruction packet to Dynamixel
-
     if (Direction_Pin > -1){
         digitalWrite(Direction_Pin,HIGH);                                               // Set TX Buffer pin to HIGH
     }
@@ -844,7 +430,7 @@ void DynamixelClass::transmitInstructionPacket(void){                           
 
     unsigned int checksum_packet = Instruction_Packet_Array[0] + Instruction_Packet_Array[1] + Instruction_Packet_Array[2];
 
-    for (unsigned char i = 3; i <= Instruction_Packet_Array[1]; i++){
+    for (byte i = 3; i <= Instruction_Packet_Array[1]; i++){
         _serial->write(Instruction_Packet_Array[i]);                                    // Write Instuction & Parameters (if there are any) to serial
         checksum_packet += Instruction_Packet_Array[i];
     }
@@ -876,14 +462,11 @@ void DynamixelClass::transmitInstructionPacket(void){                           
     }
 
     interrupts();
-
 }
 
-
 unsigned int DynamixelClass::readStatusPacket(void){
-
-    unsigned char Counter = 0x00;
-    unsigned char First_Header = 0x00;
+    byte Counter = 0x00;
+    byte First_Header = 0x00;
 
     Status_Packet_Array[0] = 0x00;
     Status_Packet_Array[1] = 0x00;
@@ -930,9 +513,7 @@ unsigned int DynamixelClass::readStatusPacket(void){
 }
 
 void DynamixelClass::clearRXbuffer(void){
-
     while (_serial->read() != -1);  // Clear RX buffer;
-
 }
 
 DynamixelClass Dynamixel;

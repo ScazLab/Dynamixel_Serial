@@ -69,7 +69,7 @@ Version 2.2
 #define RAM_PRESENT_LOAD_H              0x29
 #define RAM_PRESENT_VOLTAGE             0x2A
 #define RAM_PRESENT_TEMPERATURE         0x2B
-#define RAM_REGISTER                    0x2C
+#define RAM_REGISTERED                  0x2C
 #define RAM_MOVING                      0x2E
 #define RAM_LOCK                        0x2F
 #define RAM_PUNCH_L                     0x30
@@ -95,17 +95,12 @@ Version 2.2
 #define RESET_LENGTH                    0x02
 #define PING_LENGTH                     0x02
 #define ACTION_LENGTH                   0x02
+#define SET_REGISTER1_LENGTH            0x04
+#define SET_REGISTER2_LENGTH            0x05
 #define SET_ID_LENGTH                   0x04
 #define SET_BD_LENGTH                   0x04
 #define SET_RETURN_LEVEL_LENGTH         0x04
-#define READ_TEMP_LENGTH                0x04
-#define READ_POS_LENGTH                 0x04
-#define READ_LOAD_LENGTH                0x04
-#define READ_SPEED_LENGTH               0x04
-#define READ_VOLT_LENGTH                0x04
 #define READ_REGISTER_LENGTH            0x04
-#define READ_MOVING_LENGTH              0x04
-#define READ_LOCK_LENGTH                0x04
 #define LED_LENGTH                      0x04
 #define SET_HOLDING_TORQUE_LENGTH       0x04
 #define SET_MAX_TORQUE_LENGTH           0x05
@@ -162,42 +157,49 @@ public:
     void begin(Stream&);
     void end(void);
 
-    void setDirectionPin(unsigned char);
-    unsigned int reset(unsigned char);
-    unsigned int ping(unsigned char);
+    void setDirectionPin(byte);
+    unsigned int reset(byte);
+    unsigned int ping(byte);
 
-    unsigned int setStatusPaketReturnDelay(unsigned char,unsigned char);
-    unsigned int setID(unsigned char, unsigned char);
-    unsigned int setBaudRate(unsigned char, long);
-    unsigned int setMaxTorque(unsigned char, int);
-    unsigned int setHoldingTorque(unsigned char, bool);
-    unsigned int setAlarmShutdown(unsigned char,unsigned char);
-    unsigned int setStatusPaket(unsigned char,unsigned char);
-    unsigned int setMode(unsigned char, bool, unsigned int, unsigned int);
-    unsigned int setPunch(unsigned char, unsigned int);
-    unsigned int setPID(unsigned char, unsigned char, unsigned char, unsigned char);
-    unsigned int setTemp(unsigned char, unsigned char);
-    unsigned int setVoltage(unsigned char, unsigned char, unsigned char);
+    unsigned int setRegister1(byte ID, byte address, byte value);
+    unsigned int setRegister2(byte ID, byte address, unsigned int value);
+    unsigned int setStatusPacketReturnDelay(byte,byte);
+    unsigned int setID(byte, byte);
+    unsigned int setBaudRate(byte, long);
+    unsigned int setMaxTorque(byte, int);
+    unsigned int setTorqueLimit(byte, int);
+    unsigned int setHoldingTorque(byte, bool);
+    unsigned int setAlarmShutdown(byte,byte);
+    unsigned int setStatusPacket(byte,byte);
+    unsigned int setMode(byte, bool, unsigned int, unsigned int);
+    unsigned int setPunch(byte, unsigned int);
+    unsigned int setPID(byte, byte, byte, byte);
+    unsigned int setTemp(byte, byte);
+    unsigned int setVoltage(byte, byte, byte);
 
-    unsigned int servo(unsigned char, unsigned int, unsigned int);
-    unsigned int servoPreload(unsigned char, unsigned int, unsigned int);
-    unsigned int wheel(unsigned char, bool, unsigned int);
-    void wheelSync(unsigned char, bool, unsigned int, unsigned char, bool, unsigned int, unsigned char, bool, unsigned int);
-    unsigned int wheelPreload(unsigned char, bool, unsigned int);
+    unsigned int servo(byte ID, unsigned int Position, unsigned int Speed);
+    unsigned int wheel(byte, bool, unsigned int);
 
-    unsigned int action(unsigned char);
+    unsigned int action(byte);
 
-    unsigned int readTemperature(unsigned char);
-    unsigned int readVoltage(unsigned char);
-    unsigned int readPosition(unsigned char);
-    unsigned int readLoad(unsigned char);
-    unsigned int readSpeed(unsigned char);
+    unsigned int readRegister(byte ID, byte address, byte length);
+    unsigned int readTemperature(byte);
+    unsigned int readVoltage(byte);
+    unsigned int readPosition(byte);
+    unsigned int readLoad(byte);
+    unsigned int readSpeed(byte);
 
-    unsigned int checkRegister(unsigned char);
-    unsigned int checkMovement(unsigned char);
-    unsigned int checkLock(unsigned char);
+    unsigned int readGoalPosition(byte);
+    unsigned int readGoalSpeed(byte);
+    unsigned int readMaxTorque(byte);
+    unsigned int readTorqueLimit(byte);
+    unsigned int readHoldingTorque(byte);
 
-    unsigned int ledState(unsigned char, bool);
+    unsigned int checkRegistered(byte);
+    unsigned int checkMovement(byte);
+    unsigned int checkLock(byte);
+
+    unsigned int ledState(byte, bool);
 
 private:
 
@@ -207,11 +209,11 @@ private:
 
     Stream *_serial;
 
-    unsigned char   Instruction_Packet_Array[14];   // Array to hold instruction packet data
-    unsigned char   Status_Packet_Array[8];         // Array to hold returned status packet data
+    byte   Instruction_Packet_Array[14];   // Array to hold instruction packet data
+    byte   Status_Packet_Array[8];         // Array to hold returned status packet data
     unsigned long   Time_Counter;                   // Timer for time out watchers
     char            Direction_Pin;                  // Pin to control TX/RX buffer chip
-    unsigned char   Status_Return_Value;            // Status packet return states ( NON , READ , ALL )
+    byte   Status_Return_Value;            // Status packet return states ( NON , READ , ALL )
 };
 
 
